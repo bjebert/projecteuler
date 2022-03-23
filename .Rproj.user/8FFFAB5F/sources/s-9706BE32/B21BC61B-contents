@@ -1,0 +1,17 @@
+factors <- function(x) {
+    
+    N <- 1:floor(sqrt(x))    
+    lower <- N[x %% N == 0]
+    
+    return(sort(unique(c(lower, x / lower))))
+}
+
+
+is_prime <- function(x) {
+    return(length(factors(x)) == 2)
+}
+
+
+is_prime_sieve <- function(x, sieve = c()) {
+    
+}

@@ -1,4 +1,4 @@
-sieve <- readRDS("helpers/prime_sieve.rds")
+# sieve <- readRDS("helpers/prime_sieve.rds")
 
 
 factors <- function(x) {
@@ -38,6 +38,7 @@ is_prime <- function(x) {
 
 
 is_prime_sieve <- function(x, sieve) {
+    if(x == 1) return(FALSE)
     filt <- sieve[sieve <= floor(sqrt(x))]
     
     if(max(sieve) < floor(sqrt(x))) {  # Sieve not big enough
@@ -45,4 +46,21 @@ is_prime_sieve <- function(x, sieve) {
     }
     
     return(all(x %% filt != 0))
+}
+
+
+create_prime_sieve <- function(max_N = 1e6, existing_sieve = NULL, write = FALSE) {
+    
+    if(is.null(existing_sieve)) {  # create a small sieve to speed up calculation
+        num_small <- 1:floor(max_N / 100)
+        existing_sieve <- num_small[sapply(num_small, is_prime)] 
+    }
+    
+    p <- (1:max_N)[sapply(1:max_N, function(n) is_prime_sieve(n, existing_sieve))]
+    
+    if(write) {
+        saveRDS(p, "helpers/prime_sieve.rds")
+    }
+    
+    return(p)
 }

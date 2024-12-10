@@ -1,70 +1,56 @@
 source("helpers/primes.R")
 
-# So ugly & slow.  And, wouldn't work if prime involved was > 1e4 (would need more calculation).
-# Better ways to do it involve a recursive search, and likely a lazy evaluation for compatibility, rather
-# than pre-calculating (which takes a long time).
-
-# Nicer solution implemented in 060-2.
-
-# Start with a smaller set of primes
-filt <- sieve[sieve < 1e4 & !(sieve %in% c(2, 5))]
-
-# For each element in sieve, find other elements that would be incompatible with being concatenated.  Track in a boolean array
-compatible <- setNames(lapply(1:length(filt), function(x) rep(FALSE, length(filt))), filt)
-
-concat_mat <- sapply(1:(length(filt)-1), function(i) {
-    t(sapply((i+1):length(filt), function(j) {
-        as.numeric(c(paste0(filt[i], filt[j]), paste0(filt[j], filt[i])))
-    }))
-})
+filt <- sieve[!(sieve %in% c(2, 5)) & sieve < 1e4]
+compatible <- setNames(lapply(1:length(filt), function(x) rep(NA, length(filt))), filt)
 
 
-for(i in 1:length(concat_mat)) {
-    for(j in 1:nrow(concat_mat[[i]])) {
-        is_compatible <- all(sapply(concat_mat[[i]][j,], is_prime))
-        
-        compatible[[i]][j+i] <- is_compatible
-        compatible[[j+i]][i] <- is_compatible
-    }
-    
-    compatible[[i]][i] <- FALSE
+is_compatible <- function(a, b) {
+    a != b && is_prime(as.numeric(paste0(a, b))) && is_prime(as.numeric(paste0(b, a)))
 }
 
 
+get_compatible <- function(x) {
+    wx <- which(x == filt)
+    xc <- as.character(x)
+    w <- which(is.na(compatible[[xc]]))
+    
+    for(i in w) {
+        compatible_check <- is_compatible(x, filt[i]) 
+        
+        compatible[[xc]][i] <<- compatible_check
+        compatible[[as.character(filt[i])]][wx] <<- compatible_check
+    }
+    
+    return(filt[compatible[[xc]]])
+}
+
+
+Q <- as.list(filt)
+set_size <- 5
 lowest <- Inf
 
-for(i in filt) {
-    match1 <- filt[compatible[[as.character(i)]]]
+while(length(Q) > 0) {
+    curr <- Q[[1]]
+    Q <- Q[-1]
+    # print(sprintf("%d / %d", length(Q), length(curr)))
     
-    for(j in match1) {
-        match2 <- intersect(match1, filt[compatible[[as.character(j)]]])
-        
-        if(length(match2) > 1) {
-            for(k in match2) {
-                match3 <- intersect(match2, filt[compatible[[as.character(k)]]])
-                
-                if(length(match3) > 1) {
-                    for(x in match3) {
-                        match4 <- intersect(match3, filt[compatible[[as.character(x)]]])
-                        
-                        for(y in match4) {
-                            match_sum <- i+j+k+x+y
-                            
-                            if(match_sum < lowest) {
-                                lowest <- match_sum
-                                print(lowest)
-                                print(sprintf("%d/%d/%d/%d/%d", i, j, k, x, y))
-                            }
-                        }    
-                    }
-                }
-                
-                        
-            }
+    if(length(curr) == set_size) {
+        if(sum(curr) < lowest) {
+            lowest <- sum(curr)
+            print(sprintf("%s = %s", lowest, paste(curr, collapse = "/")))
         }
+        
+        next
     }
+    
+    n <- Reduce(intersect, lapply(curr, get_compatible))
+    
+    # Add all compatible to current to queue
+    if(length(n) >= 1) {
+        Q <- c(lapply(n, function(x) c(curr, x)), Q)
+    }
+    
+    # Sort Q by mean number
+    Q <- Q[order(-sapply(Q, length), sapply(Q, mean))]
 }
-
-
-
 
